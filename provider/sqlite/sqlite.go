@@ -175,6 +175,79 @@ func (a *Alerts) getPending() ([]*types.Alert, error) {
 	return alerts, nil
 }
 
+// GetPending implements the Alerts interface.
+func (a *Alerts) GetAll() provider.AlertIterator {
+	var (
+		ch   = make(chan *types.Alert, 200)
+		done = make(chan struct{})
+	)
+
+	alerts, err := a.getAll()
+
+	go func() {
+		defer close(ch)
+
+		for _, a := range alerts {
+			select {
+			case ch <- a:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	return provider.NewAlertIterator(ch, done, err)
+}
+
+func (a *Alerts) getAll() ([]*types.Alert, error) {
+	dbmtx.Lock()
+	defer dbmtx.Unlock()
+
+	// Get the last instance for each alert.
+	rows, err := a.db.Query(`
+		SELECT a1.labels, a1.annotations, a1.starts_at, a1.ends_at, a1.updated_at, a1.timeout
+		FROM alerts AS a1
+		ORDER BY a1.updated_at DESC;
+	`)
+	if err != nil {
+		return nil, err
+	}
+
+	var alerts []*types.Alert
+	for rows.Next() {
+		var (
+			labels      []byte
+			annotations []byte
+			al          types.Alert
+		)
+		if err := rows.Scan(
+			&labels,
+			&annotations,
+			&al.StartsAt,
+			&al.EndsAt,
+			&al.UpdatedAt,
+			&al.Timeout,
+		); err != nil {
+			return nil, err
+		}
+
+		if err := json.Unmarshal(labels, &al.Labels); err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(annotations, &al.Annotations); err != nil {
+			return nil, err
+		}
+
+		alerts = append(alerts, &al)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return alerts, nil
+}
+
+
 // Get implements the Alerts interface.
 func (a *Alerts) Get(model.Fingerprint) (*types.Alert, error) {
 	return nil, nil
@@ -516,7 +589,7 @@ func (s *Silences) All() ([]*types.Silence, error) {
 
 	rows, err := s.db.Query(`
 		SELECT id, matchers, starts_at, ends_at, created_at, created_by, comment
-		FROM silences 
+		FROM silences
 		ORDER BY starts_at DESC
 	`)
 	if err != nil {

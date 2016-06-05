@@ -147,6 +147,49 @@ func (a *Alerts) getPending() ([]*types.Alert, error) {
 	return alerts, err
 }
 
+func (a *Alerts) GetAll() provider.AlertIterator {
+	var (
+		ch   = make(chan *types.Alert, 200)
+		done = make(chan struct{})
+	)
+
+	alerts, err := a.getAll()
+
+	go func() {
+		defer close(ch)
+
+		for _, a := range alerts {
+			select {
+			case ch <- a:
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	return provider.NewAlertIterator(ch, done, err)
+}
+
+func (a *Alerts) getAll() ([]*types.Alert, error) {
+	var alerts []*types.Alert
+
+	err := a.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(bktAlerts)
+		c := b.Cursor()
+
+		for k, v := c.First(); k != nil; k, v = c.Next() {
+			var a types.Alert
+			if err := json.Unmarshal(v, &a); err != nil {
+				return err
+			}
+			alerts = append(alerts, &a)
+		}
+
+		return nil
+	})
+	return alerts, err
+}
+
 // Get returns the alert for a given fingerprint.
 func (a *Alerts) Get(fp model.Fingerprint) (*types.Alert, error) {
 	var alert types.Alert

@@ -90,6 +90,7 @@ func (api *API) Register(r *route.Router) {
 
 	r.Get("/status", ihf("status", api.status))
 	r.Get("/alerts/groups", ihf("alert_groups", api.alertGroups))
+	r.Get("/history", ihf("history", api.listAllAlerts))
 
 	r.Get("/alerts", ihf("list_alerts", api.listAlerts))
 	r.Post("/alerts", ihf("add_alerts", api.addAlerts))
@@ -157,6 +158,32 @@ func (api *API) alertGroups(w http.ResponseWriter, req *http.Request) {
 
 func (api *API) listAlerts(w http.ResponseWriter, r *http.Request) {
 	alerts := api.alerts.GetPending()
+	defer alerts.Close()
+
+	var (
+		err error
+		res []*types.Alert
+	)
+	// TODO(fabxc): enforce a sensible timeout.
+	for a := range alerts.Next() {
+		if err = alerts.Err(); err != nil {
+			break
+		}
+		res = append(res, a)
+	}
+
+	if err != nil {
+		respondError(w, apiError{
+			typ: errorInternal,
+			err: err,
+		}, nil)
+		return
+	}
+	respond(w, types.Alerts(res...))
+}
+
+func (api *API) listAllAlerts(w http.ResponseWriter, r *http.Request) {
+	alerts := api.alerts.GetAll()
 	defer alerts.Close()
 
 	var (
