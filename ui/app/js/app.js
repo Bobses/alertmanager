@@ -163,7 +163,7 @@ angular.module('am.controllers').controller('NavCtrl',
   }
 );
 
-angular.module('am.controllers').controller('History2Ctrl',
+angular.module('am.controllers').controller('HistoryCtrl',
   function($scope, History) {
     $scope.refresh = function () {
       History.query({},
@@ -182,69 +182,6 @@ angular.module('am.controllers').controller('History2Ctrl',
     $scope.refresh();
   }
 );
-angular.module('am.controllers').controller('HistoryCtrl',
-  function($scope, $location, History) {
-    $scope.groups = null;
-    $scope.allReceivers = [];
-
-    $scope.$watch('receivers', function(recvs) {
-      if (recvs === undefined || angular.equals(recvs, $scope.allReceivers)) {
-        return;
-      }
-      if (recvs) {
-        $location.search('receiver', recvs);
-      } else {
-        $location.search('receiver', null);
-      }
-    });
-    
-    $scope.refresh = function() {
-      History.query({},
-        function(data) {
-          $scope.groups = data.data;
-
-          $scope.allReceivers = [];
-          angular.forEach($scope.groups, function(group) {
-            angular.forEach(group.blocks, function(blk) {
-              if (this.indexOf(blk.routeOpts.receiver) < 0) {
-                this.push(blk.routeOpts.receiver);
-              }
-            }, this);
-          }, $scope.allReceivers);
-
-          if (!$scope.receivers) {
-            var recvs = angular.copy($scope.allReceivers);
-            if ($location.search()['receiver']) {
-              recvs = angular.copy($location.search()['receiver']);
-              // The selected items must always be an array for multi-option selects.
-              if (!angular.isArray(recvs)) {
-                recvs = [recvs];
-              }
-            }
-            $scope.receivers = recvs;
-          }
-        },
-        function(data) {
-          $scope.error = data.data;
-        }
-      );
-    };
-
-    $scope.notEmpty = function(group) {
-      var l = 0;
-      angular.forEach(group.blocks, function(blk) {
-        if (this.indexOf(blk.routeOpts.receiver) >= 0) {
-          l += blk.alerts.length || 0;
-        }
-      }, $scope.receivers);
-
-      return l > 0;
-    };
-
-    $scope.refresh();
-  }
-);
-
 
 angular.module('am.controllers').controller('AlertCtrl',
   function($scope) {
