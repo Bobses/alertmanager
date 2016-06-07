@@ -205,7 +205,7 @@ func (a *Alerts) getAll() ([]*types.Alert, error) {
 
 	// Get the last instance for each alert.
 	rows, err := a.db.Query(`
-		SELECT a1.labels, a1.annotations, a1.starts_at, a1.ends_at, a1.updated_at, a1.timeout
+		SELECT a1.updated_at, a1.labels, a1.annotations, a1.starts_at, a1.ends_at, a1.updated_at, a1.timeout
 		FROM alerts AS a1
 		ORDER BY a1.updated_at DESC;
 	`)

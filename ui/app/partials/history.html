@@ -1,4 +1,4 @@
-<form id="filter-alerts" method="post" action="" class="forms">
+<!--<form id="filter-alerts" method="post" action="" class="forms">
 	<fieldset>
 		<legend>Filter</legend>
 
@@ -19,8 +19,12 @@
 			</div>
 		</blocks>
 	</fieldset>
-</form>
 
+-->
+<form id="filter-alerts" method="post" action="" class="forms">
+	<fieldset>
+		<legend>Alert History</legend>
+				<blocks cols="1">	<section>
 <div id="alert-groups" ng-class="{'hide-silenced': hideSilenced}">
 	<div class="alert-group" ng-repeat="group in groups | filter:notEmpty">
 		<div class="alert-group-header group">
@@ -38,3 +42,7 @@
 		</div>
 	</div>
 </div>
+	</section>
+		</blocks>
+	</fieldset>
+</form>
